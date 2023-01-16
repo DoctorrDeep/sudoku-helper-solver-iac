@@ -25,6 +25,28 @@ resource "linode_instance" "sudoku_resource_instance" {
   }
 
   provisioner "file" {
+    source      = "${var.sudoku_cert_loc}/"
+    destination = "/root/certs"
+    connection {
+      type     = "ssh"
+      host     = self.ip_address
+      user     = "root"
+      password = var.root_pass
+    }
+  }
+
+  provisioner "file" {
+    source      = "./encrypt.conf"
+    destination = "/root/certs"
+    connection {
+      type     = "ssh"
+      host     = self.ip_address
+      user     = "root"
+      password = var.root_pass
+    }
+  }
+
+  provisioner "file" {
     source      = "${var.sudoku_be_repo}/sudoku_solver_img.tar.gz"
     destination = "/root/sudoku_solver_img.tar.gz"
     connection {
@@ -48,13 +70,31 @@ resource "linode_instance" "sudoku_resource_instance" {
 
   provisioner "remote-exec" {
     inline = [
+      # Setup and install docker + nginx
       "apt-get update -y",
       "apt-get install -y docker.io",
+      "wget http://nginx.org/keys/nginx_signing.key",
+      "apt-key add nginx_signing.key",
+      "rm nginx_signing.key",
+      "echo deb [arch=amd64] http://nginx.org/packages/mainline/ubuntu/ $(lsb_release -cs) nginx >> /etc/apt/sources.list.d/nginx.list",
+      "echo deb-src http://nginx.org/packages/mainline/ubuntu/ $(lsb_release -cs) nginx >> /etc/apt/sources.list.d/nginx.list",
+      "apt update",
+      "apt install nginx -y",
+
+      # Run docekrized apps
       "docker network create -d bridge sudoku_solver_net.local",
       "docker load -i sudoku_solver_img.tar.gz",
       "docker run --name=sudoku_solver_fastapi --network=sudoku_solver_net.local --rm=true -p 8000:8000 -itd sudoku_solver_img:v1.0",
       "docker load -i sudoku_solver_fe_img.tar.gz",
-      "docker run --name=sudoku_solver_react_fe --network=sudoku_solver_net.local --rm=true -p 80:80 -itd sudoku_solver_fe_img:v1.0-prod"
+      "docker run --name=sudoku_solver_react_fe --network=sudoku_solver_net.local --rm=true -p 80:80 -itd sudoku_solver_fe_img:v1.0-prod",
+
+      # Setup nginx reverse-proxy
+      "systemctl enable nginx",
+      "systemctl start nginx",
+      "mv /root/certs/encrypt.conf /etc/nginx/conf.d/sudoku.conf",
+      "mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.disabled",
+      "nginx -t",
+      "systemctl restart nginx",
     ]
 
     connection {
@@ -90,7 +130,7 @@ resource "linode_firewall" "sudoku_firewall" {
     label    = "allow-http"
     action   = "ACCEPT"
     protocol = "TCP"
-    ports    = "8000, 80"
+    ports    = "443, 8000"
     ipv4     = ["0.0.0.0/0"]
     ipv6     = ["ff00::/8"]
   }
@@ -107,3 +147,4 @@ variable "ssh_key" {}
 variable "root_pass" {}
 variable "sudoku_be_repo" {}
 variable "sudoku_fe_repo" {}
+variable "sudoku_cert_loc" {}

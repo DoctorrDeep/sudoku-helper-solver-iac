@@ -1,5 +1,6 @@
 .PHONY: build
 
+# This is called by the deploy/apply command below as well, no need to run it explicitly
 build:
 	@bash build-images.sh ~/Documents/Codesko/Personal/sudoku-helper-solver-backend ~/Documents/Codesko/Personal/sudoku-helper-solver-frontend
 
