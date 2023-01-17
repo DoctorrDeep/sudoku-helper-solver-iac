@@ -25,8 +25,8 @@ resource "linode_instance" "sudoku_resource_instance" {
   }
 
   provisioner "file" {
-    source      = "${var.sudoku_cert_loc}/"
-    destination = "/root/certs"
+    source      = "${var.sudoku_cert_loc}"
+    destination = "/root"
     connection {
       type     = "ssh"
       host     = self.ip_address
@@ -37,7 +37,7 @@ resource "linode_instance" "sudoku_resource_instance" {
 
   provisioner "file" {
     source      = "./encrypt.conf"
-    destination = "/root/certs"
+    destination = "/root/certs/encrypt.conf"
     connection {
       type     = "ssh"
       host     = self.ip_address
