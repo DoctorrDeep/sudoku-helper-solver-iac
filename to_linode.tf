@@ -81,7 +81,7 @@ resource "linode_instance" "sudoku_resource_instance" {
       # Run docekrized apps
       "docker network create -d bridge sudoku_solver_net.local",
       "docker load -i sudoku_solver_img.tar.gz",
-      "docker run --name=sudoku_solver_fastapi --network=sudoku_solver_net.local --rm=true -p 8000:8000 -itd sudoku_solver_img:v1.0",
+      "docker run --name=sudoku_solver_fastapi --network=sudoku_solver_net.local --rm=true -p 8001:8000 -itd sudoku_solver_img:v1.0",
       "docker load -i sudoku_solver_fe_img.tar.gz",
       "docker run --name=sudoku_solver_react_fe --network=sudoku_solver_net.local --rm=true -p 81:80 -itd sudoku_solver_fe_img:v1.0-prod",
 
