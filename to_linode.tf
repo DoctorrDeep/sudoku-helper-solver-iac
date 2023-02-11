@@ -20,10 +20,6 @@ resource "linode_instance" "sudoku_resource_instance" {
   root_pass       = var.root_pass
   authorized_keys = [var.ssh_key]
 
-  provisioner "local-exec" {
-    command = "bash build-images.sh ${var.sudoku_be_repo} ${var.sudoku_fe_repo}"
-  }
-
   provisioner "file" {
     source      = "${var.sudoku_cert_loc}"
     destination = "/root"
@@ -37,26 +33,6 @@ resource "linode_instance" "sudoku_resource_instance" {
   provisioner "file" {
     source      = "reverse-proxy"
     destination = "/root"
-    connection {
-      type     = "ssh"
-      host     = self.ip_address
-      user     = "root"
-      password = var.root_pass
-    }
-  }
-  provisioner "file" {
-    source      = "${var.sudoku_be_repo}/sudoku_solver_img.tar.gz"
-    destination = "/root/sudoku_solver_img.tar.gz"
-    connection {
-      type     = "ssh"
-      host     = self.ip_address
-      user     = "root"
-      password = var.root_pass
-    }
-  }
-  provisioner "file" {
-    source      = "${var.sudoku_fe_repo}/sudoku_solver_fe_img.tar.gz"
-    destination = "/root/sudoku_solver_fe_img.tar.gz"
     connection {
       type     = "ssh"
       host     = self.ip_address
@@ -78,12 +54,10 @@ resource "linode_instance" "sudoku_resource_instance" {
       "apt update",
       "apt install nginx -y",
 
-      # Run docekrized apps
+      # Run dockerized apps
       "docker network create -d bridge sudoku_solver_net.local",
-      "docker load -i sudoku_solver_img.tar.gz",
-      "docker run --name=sudoku_solver_fastapi --network=sudoku_solver_net.local --rm=true -p 8001:8000 -itd sudoku_solver_img:v1.0",
-      "docker load -i sudoku_solver_fe_img.tar.gz",
-      "docker run --name=sudoku_solver_react_fe --network=sudoku_solver_net.local --rm=true -p 81:80 -itd sudoku_solver_fe_img:v1.0-prod",
+      "docker run --name=sudoku_solver_fastapi --network=sudoku_solver_net.local --rm=true -p 8001:8000 -itd ambardeepdas/sudoku-solver-python-backend:${var.be_tag}",
+      "docker run --name=sudoku_solver_react_fe --network=sudoku_solver_net.local --rm=true -p 81:80 -itd ambardeepdas/sudoku-solver-react-frontend:${var.fe_tag}",
 
       # Setup nginx reverse-proxy
       "systemctl enable nginx",
@@ -142,6 +116,6 @@ resource "linode_firewall" "sudoku_firewall" {
 variable "token" {}
 variable "ssh_key" {}
 variable "root_pass" {}
-variable "sudoku_be_repo" {}
-variable "sudoku_fe_repo" {}
+variable "be_tag" {}
+variable "fe_tag" {}
 variable "sudoku_cert_loc" {}
